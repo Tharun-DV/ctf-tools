@@ -1,59 +1,59 @@
-import subprocess as sp
+import subprocess
 import threading
 import os
 
-
-def scan1(ip):
-    print("Starting Scan 1")
-    sp.Popen(f"sudo nmap -Pn -p- -A -T4 -oN nmap/scan1.txt {ip}", shell=True)
-    print("Scan 1 Ended...")
-
-
-def scan2(ip):
-    print("Starting Scan 2")
-    sp.Popen(
-        f"sudo nmap -Pn -p- -A --min-rate 5000 -oN nmap/scan2.txt {ip}", shell=True
-    )
-    print("Scan 2 Ended...")
-
-
-def scan3(ip):
-    print("Starting Scan 3")
-    sp.Popen(
-        f"sudo nmap -Pn -sU --top-ports 500 -A -T4 -oN nmap/udp-scan.txt {ip}",
-        shell=True,
-    )
-    print("Scan 3 Ended...")
+# Constants
+NMAP_COMMANDS = {
+    "scan1": {
+        "cmd": "sudo nmap -Pn -p- -A -T4 -oN nmap/scan1.txt {}",
+        "options": {"shell": True},
+    },
+    "scan2": {
+        "cmd": "sudo nmap -Pn -p- -A --min-rate 5000 -oN nmap/scan2.txt {}",
+        "options": {"shell": True},
+    },
+    "scan3": {
+        "cmd": "sudo nmap -Pn -sU --top-ports 500 -A -T4 -oN nmap/udp-scan.txt {}",
+        "options": {"shell": True},
+    },
+    "normal_scan": {
+        "cmd": "sudo nmap -sSCV -oN nmap/normal_scan.txt {}",
+        "options": {"shell": True},
+    },
+}
 
 
-def normal_scan(ip):
-    print("Starting Normal Scan")
-    sp.Popen(f"sudo nmap -sSCV -oN nmap/normal_scan.txt {ip}", shell=True)
-    print("Normal Scan Ended")
+def scan(ip, func):
+    print(f"Starting {func}")
+    process = subprocess.Popen(func["cmd"].format(ip), **func["options"])
+    process.wait()
+    print(f"{func} Ended")
 
 
-# Main execution
-print("Starting Nmap scan")
-ip = input("Enter IP address to scan: ")
+def main():
+    ip = input("Enter IP address to scan: ")
 
-# Create directory if it doesn't exist
-os.makedirs("nmap", exist_ok=True)
+    # Create directory if it doesn't exist
+    os.makedirs("nmap", exist_ok=True)
 
-# Create and start threads for each scan
-t1 = threading.Thread(target=scan1, args=(ip,))
-t2 = threading.Thread(target=scan2, args=(ip,))
-t3 = threading.Thread(target=scan3, args=(ip,))
-no = threading.Thread(target=normal_scan, args=(ip,))
+    # Create and start threads for each scan
+    threads = [
+        threading.Thread(target=scan, args=(ip, NMAP_COMMANDS["scan1"])),
+        threading.Thread(target=scan, args=(ip, NMAP_COMMANDS["scan2"])),
+        threading.Thread(target=scan, args=(ip, NMAP_COMMANDS["scan3"])),
+        threading.Thread(target=scan, args=(ip, NMAP_COMMANDS["normal_scan"])),
+    ]
 
-t1.start()
-t2.start()
-t3.start()
-no.start()
+    # Start threads
+    for thread in threads:
+        thread.start()
 
-# Join threads to wait for their completion
-t1.join()
-t2.join()
-t3.join()
-no.join()
+    # Join threads to wait for their completion
+    for thread in threads:
+        thread.join()
 
-print("All scans completed.")
+    print("All scans completed.")
+
+
+if __name__ == "__main__":
+    main()
